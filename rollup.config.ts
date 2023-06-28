@@ -1,7 +1,8 @@
-import { terser } from "rollup-plugin-terser";
-import typescript from "rollup-plugin-typescript2";
+import terser from "@rollup/plugin-terser";
+import typescript from "@rollup/plugin-typescript";
+import { defineConfig } from "rollup";
 
-export default {
+export default defineConfig({
   input: "./src/index.ts",
   output: [
     {
@@ -17,10 +18,9 @@ export default {
       },
     }),
     typescript({
-      tsconfig: "./tsconfig.json",
-      tsconfigOverride: {
-        compilerOptions: { module: "esnext" },
+      compilerOptions: {
+        module: "ESNext",
       },
     }),
   ],
-};
+});

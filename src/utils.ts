@@ -1,14 +1,14 @@
 import proxy from "http2-proxy";
-import { proxyTableType } from "./index";
+import type { ProxyTableType } from "./index";
 
-import { Connect } from "vite";
+import { Connect, ProxyOptions } from "vite";
 import * as http from "http";
 
-export interface middleWareOptsType {
+export interface MiddleWareOptsType {
   viteProtocol: number | string;
   vitePort: number | string;
   mockPath: string;
-  proxyTableMap: Exclude<proxyTableType, string>;
+  proxyTableMap: Exclude<ProxyTableType, string>;
 }
 
 process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
@@ -18,9 +18,14 @@ export function generateMiddlewareProxyTable({
   vitePort,
   mockPath,
   proxyTableMap,
-}: middleWareOptsType): Connect.HandleFunction {
+}: MiddleWareOptsType): Connect.HandleFunction {
   // let proxyTable;
-  let proxyTableResolved = [];
+  type ProxyTableElement = {
+    proxyOptions: { hostname: string; port: number };
+    rewrite: ProxyOptions["rewrite"];
+    proxyPath: string;
+  };
+  let proxyTableResolved: ProxyTableElement[] = [];
 
   // try {
   //   proxyTable = require(path.resolve(__dirname, "../../config/proxy-table"));
@@ -34,12 +39,12 @@ export function generateMiddlewareProxyTable({
     const proxyPath = key;
     const { target, rewrite } = proxyTableMap[proxyPath];
 
-    const viteProxyUrLTarget =
+    const [hostname, port] =
       target && target.split("//").pop().replace("/", "").split(":");
 
     const proxyOptions = {
-      hostname: viteProxyUrLTarget[0],
-      port: Number(viteProxyUrLTarget[1]) || 80,
+      hostname,
+      port: Number(port),
     };
 
     proxyTableResolved.push({
@@ -60,15 +65,17 @@ export function generateMiddlewareProxyTable({
      *  2. 前端vite文件服务请求  代理 --> 本地h2
      *  3. 其它数据接口请求  代理 --> 测试环境的http服务
      */
+    const { originalUrl } = req;
+    if (originalUrl === undefined) {
+      throw new Error(`Expected originalUrl to be defined, got 'undefined'.`);
+    }
     for (let proxyOpts of proxyTableResolved) {
       const { rewrite, proxyOptions, proxyPath } = proxyOpts;
-      const proxyOptsResolved = {
-        ...proxyOptions,
-        path: rewrite(req.originalUrl),
-      };
+      const path = rewrite?.(originalUrl) ?? originalUrl;
+      const proxyOptsResolved = { ...proxyOptions, path };
 
-      if (req.originalUrl.includes(proxyPath)) {
-        if (req.originalUrl.includes(mockPath)) {
+      if (req.originalUrl?.startsWith(proxyPath)) {
+        if (req.originalUrl?.startsWith(mockPath)) {
           return proxy.web(req, res, {
             ...proxyOptsResolved,
             protocol: viteProtocol,

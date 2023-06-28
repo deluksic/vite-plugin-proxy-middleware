@@ -2,26 +2,25 @@ import { generateMiddlewareProxyTable } from "./utils";
 import chalk from "chalk";
 
 import { Plugin, ProxyOptions, ResolvedConfig } from "vite";
-import { middleWareOptsType } from "./utils";
 
 interface userOptsType {
   /** if you are using mock, specify a mockPath, default value is '/dev-mock',  */
   mockPath?: string;
 
   /** proxyTable can be a proxyTable.js path string or proxyTable object  */
-  proxyTable: proxyTableType;
+  proxyTable: ProxyTableType;
 
   /** public host config (if you have a host name for your develop environment,such as "xxx-dev.xxx.com", you can set it here, which will be much easier for your to click the link and open the page on browser)  */
   publicHost?: string;
 }
 
-export type proxyTableType = Record<"string", ProxyOptions> | string;
+export type ProxyTableType = Record<string, ProxyOptions> | string;
 
 function VitePluginProxyMiddleware(opts: userOptsType): Plugin {
   let config: ResolvedConfig;
-  let viteProtocol: middleWareOptsType["viteProtocol"];
-  let vitePort: middleWareOptsType["vitePort"];
-  let proxyTableMap: Record<"string", ProxyOptions>;
+  let viteProtocol: "http" | "https";
+  let vitePort: number;
+  let proxyTableMap: ProxyTableType;
 
   // defalut mock address： "/dev-mock"
   const { mockPath = "/dev-mock", proxyTable, publicHost } = opts;
@@ -39,20 +38,20 @@ function VitePluginProxyMiddleware(opts: userOptsType): Plugin {
     configResolved(resolvedConfig) {
       config = resolvedConfig;
       viteProtocol = config.server.https ? "https" : "http";
-      vitePort = config.server.port;
+      vitePort = config.server.port ?? 80;
     },
     configureServer({ middlewares }) {
       setTimeout(() => {
         publicHost &&
           console.log(
             chalk.cyan.bold(
-              "  > Here is your public host：" +
+              "  > Here is your public host: " +
                 `${viteProtocol}://${publicHost}:${vitePort}/  `
             )
           );
         console.log(
           chalk.yellow.bold(
-            `  > current serving environment：` + `${process.env.connect}\n\n`
+            `  > current serving environment: ` + `${process.env.connect}\n\n`
           )
         );
       }, 1000);
