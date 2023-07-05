@@ -76,13 +76,15 @@ export function generateMiddlewareProxyTable({
 
       if (req.originalUrl?.startsWith(proxyPath)) {
         if (req.originalUrl?.startsWith(mockPath)) {
-          return proxy.web(req, res, {
-            ...proxyOptsResolved,
-            protocol: viteProtocol,
-            port: vitePort,
-          });
+          return proxy
+            .web(req, res, {
+              ...proxyOptsResolved,
+              protocol: viteProtocol,
+              port: vitePort,
+            })
+            ?.catch(console.error);
         } else {
-          return proxy.web(req, res, proxyOptsResolved);
+          return proxy.web(req, res, proxyOptsResolved)?.catch(console.error);
         }
       }
     }
